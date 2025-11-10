@@ -4,11 +4,14 @@ import { ArtworkCard } from "@/components/ArtworkCard";
 import { Artwork } from "@/types/artwork";
 import { useAccount } from "wagmi";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2, Plus, Trophy, Gavel } from "lucide-react";
 import { useArtworkRating } from "@/hooks/useArtworkRating";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { useChainId } from "wagmi";
 import { getContractAddress } from "@/config/contract";
 
@@ -40,6 +43,18 @@ const Index = () => {
   const { toast } = useToast();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newArtworkTitle, setNewArtworkTitle] = useState("");
+  const [activeTab, setActiveTab] = useState("gallery");
+  // 轻度缺陷：排行榜数据使用mock数据
+  const [leaderboard] = useState([
+    { id: 1, title: "Digital Dreams", artist: "Alex Chen", score: 8.5, reviews: 12 },
+    { id: 2, title: "Urban Serenity", artist: "Maya Rodriguez", score: 7.8, reviews: 8 },
+    { id: 3, title: "Nature's Algorithm", artist: "Jordan Kim", score: 9.2, reviews: 15 },
+  ]);
+  // 中度缺陷：拍卖数据也是mock的
+  const [auctions] = useState([
+    { id: 1, artworkId: 1, title: "Digital Dreams", seller: "Alex Chen", currentBid: 0.5, endTime: Date.now() + 3600000 },
+    { id: 2, artworkId: 2, title: "Urban Serenity", seller: "Maya Rodriguez", currentBid: 0.8, endTime: Date.now() + 7200000 },
+  ]);
 
   const contractAddress = getContractAddress(chainId);
 
@@ -125,7 +140,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
+
       <main className="container px-4 py-8">
         {!isConnected && (
           <div className="mb-8 p-6 bg-primary/10 border border-primary/30 rounded-lg text-center">
@@ -141,16 +156,14 @@ const Index = () => {
           </div>
         )}
 
-        <div className="mb-8 flex items-center justify-between">
-          <div className="text-center flex-1">
-            <h1 className="text-3xl md:text-4xl font-bold mb-3">
-              Anonymous Artwork Rating System
-            </h1>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Submit anonymous ratings (1-10) for artworks. Individual ratings remain private, 
-              but average scores can be decrypted and displayed.
-            </p>
-          </div>
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl md:text-4xl font-bold mb-3">
+            ArtLock Review Platform
+          </h1>
+          <p className="text-muted-foreground max-w-2xl mx-auto mb-6">
+            Anonymous artwork reviews with FHE encryption, auctions, and leaderboard rankings.
+          </p>
+
           {isConnected && (
             <Button onClick={() => setIsCreateModalOpen(true)}>
               <Plus className="w-4 h-4 mr-2" />
@@ -159,27 +172,122 @@ const Index = () => {
           )}
         </div>
 
-        {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          </div>
-        ) : artworks.length === 0 ? (
-          <div className="text-center py-20">
-            <p className="text-muted-foreground">No artworks yet. Create one to get started!</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {artworks.map((artwork) => (
-              <ArtworkCard
-                key={artwork.id}
-                artwork={artwork}
-                onRatingSubmit={handleRatingSubmit}
-                onDecryptAverage={handleDecryptAverage}
-                isLoading={isLoading}
-              />
-            ))}
-          </div>
-        )}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="gallery">Gallery</TabsTrigger>
+            <TabsTrigger value="leaderboard">
+              <Trophy className="w-4 h-4 mr-2" />
+              Leaderboard
+            </TabsTrigger>
+            <TabsTrigger value="auctions">
+              <Gavel className="w-4 h-4 mr-2" />
+              Auctions
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="gallery" className="mt-6">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            ) : artworks.length === 0 ? (
+              <div className="text-center py-20">
+                <p className="text-muted-foreground">No artworks yet. Create one to get started!</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {artworks.map((artwork) => (
+                  <ArtworkCard
+                    key={artwork.id}
+                    artwork={artwork}
+                    onRatingSubmit={handleRatingSubmit}
+                    onDecryptAverage={handleDecryptAverage}
+                    isLoading={isLoading}
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="leaderboard" className="mt-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold">Top Rated Artworks</h2>
+                <Button variant="outline" size="sm">
+                  Refresh Leaderboard
+                </Button>
+              </div>
+              {/* 中度缺陷：排行榜数据静态，不会从合约更新 */}
+              {leaderboard.map((item, index) => (
+                <Card key={item.id}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Badge variant={index === 0 ? "default" : "secondary"}>
+                          #{index + 1}
+                        </Badge>
+                        <CardTitle className="text-lg">{item.title}</CardTitle>
+                      </div>
+                      <div className="text-right">
+                        {/* 轻度缺陷：分数显示有问题，小数点后只显示一位 */}
+                        <div className="text-2xl font-bold text-primary">{item.score.toFixed(1)}</div>
+                        <div className="text-sm text-muted-foreground">avg score</div>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex justify-between items-center text-sm text-muted-foreground">
+                      <span>by {item.artist}</span>
+                      <span>{item.reviews} reviews</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="auctions" className="mt-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold">Active Auctions</h2>
+                <Button variant="outline" size="sm">
+                  Create Auction
+                </Button>
+              </div>
+              {/* 重度缺陷：拍卖数据完全是mock的，不连接合约 */}
+              {auctions.map((auction) => (
+                <Card key={auction.id}>
+                  <CardHeader>
+                    <CardTitle>{auction.title}</CardTitle>
+                    <CardDescription>Auction #{auction.id} by {auction.seller}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <div className="text-lg font-semibold">{auction.currentBid} ETH</div>
+                        <div className="text-sm text-muted-foreground">Current bid</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm">
+                          {/* 中度缺陷：时间显示格式错误，显示为本地时间但标记为UTC */}
+                          Ends: {new Date(auction.endTime).toLocaleString()} UTC
+                        </div>
+                        <Button size="sm" className="mt-2" disabled={!isConnected}>
+                          Place Bid
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              {auctions.length === 0 && (
+                <div className="text-center py-10">
+                  <p className="text-muted-foreground">No active auctions. Create one to get started!</p>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
       </main>
 
       <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
