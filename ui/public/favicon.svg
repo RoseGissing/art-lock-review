@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Shield background -->
+  <path
+    d="M50 10L20 20L20 50C20 65 30 75 50 90C70 75 80 65 80 50L80 20L50 10Z"
+    fill="url(#grad)"
+    opacity="0.3"
+  />
+  <!-- Star -->
+  <path
+    d="M50 20L55 35L70 35L58 45L63 60L50 50L37 60L42 45L30 35L45 35L50 20Z"
+    fill="url(#grad)"
+  />
+</svg>
+

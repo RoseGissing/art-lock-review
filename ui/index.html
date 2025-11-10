@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ArtRating - Anonymous Artwork Rating System</title>
+    <meta name="description" content="Submit anonymous ratings (1-10) for artworks. Individual ratings remain private, but average scores can be decrypted and displayed." />
+    <meta name="author" content="ArtRating" />
+    
+    <!-- Load Zama Relayer SDK UMD bundle before the app -->
+    <!-- This sets up window.relayerSDK which is required by @zama-fhe/relayer-sdk/bundle -->
+    <script src="https://cdn.zama.ai/relayer-sdk-js/0.2.0/relayer-sdk-js.umd.cjs" type="text/javascript"></script>
+
+    <meta property="og:title" content="ArtRating - Anonymous Artwork Rating System" />
+    <meta property="og:description" content="Submit anonymous ratings (1-10) for artworks. Individual ratings remain private, but average scores can be decrypted and displayed." />
+    <meta property="og:type" content="website" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
