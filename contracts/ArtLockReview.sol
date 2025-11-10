@@ -70,10 +70,19 @@ contract ArtLockReview is SepoliaConfig {
 
     LeaderboardEntry[] public leaderboard;
 
-    // 多重签名功能
+    // 多重签名功能 - 新增功能
     mapping(bytes32 => mapping(address => bool)) public confirmations;
     mapping(bytes32 => uint256) public confirmationCount;
     mapping(bytes32 => bool) public executed;
+    mapping(bytes32 => Transaction) public transactions; // 新增：存储交易详情
+
+    // 新增：Transaction结构体
+    struct Transaction {
+        address destination;
+        uint256 value;
+        bytes data;
+        bool exists;
+    }
 
     uint256 public constant REQUIRED_CONFIRMATIONS = 2;
     address[] public signers;
@@ -349,11 +358,15 @@ contract ArtLockReview is SepoliaConfig {
         bytes32 txHash = keccak256(abi.encodePacked(destination, value, data, block.timestamp));
         require(!executed[txHash], "Transaction already executed");
 
+        // 重度缺陷：缺少交易存储，后面无法获取交易详情
+        // transactions[txHash] = Transaction(destination, value, data, true); // 故意缺少
+
         confirmations[txHash][msg.sender] = true;
         confirmationCount[txHash]++;
 
         emit TransactionSubmitted(txHash, msg.sender, destination, value);
 
+        // 中度缺陷：直接执行交易而不等待所有确认
         if (confirmationCount[txHash] >= REQUIRED_CONFIRMATIONS) {
             executeTransaction(txHash, destination, value, data);
         }
@@ -370,9 +383,10 @@ contract ArtLockReview is SepoliaConfig {
 
         emit TransactionConfirmed(txHash, msg.sender);
 
+        // 重度缺陷：确认后无法执行交易，因为缺少交易数据存储
         if (confirmationCount[txHash] >= REQUIRED_CONFIRMATIONS) {
-            // 查找原始交易数据 - 在实际实现中需要存储这些数据
-            // 这里简化处理，实际应该存储完整的交易数据
+            // 重大bug：无法获取destination, value, data，因为没有存储
+            // executeTransaction(txHash, destination, value, data); // 无法调用
         }
     }
 
@@ -409,20 +423,23 @@ contract ArtLockReview is SepoliaConfig {
         return confirmations[txHash][signer];
     }
 
-    // 排行榜功能
+    // 排行榜功能 - 新增复杂排序逻辑
     function updateLeaderboard() external {
-        // 简化实现 - 实际应该有更复杂的排序逻辑
+        // 中度缺陷：排序逻辑不完整，缺少真正的评分比较
         delete leaderboard;
 
         for (uint256 i = 0; i < artworkCounter; i++) {
-            if (artworks[i].exists && artworks[i].totalReviews > 0) {
+            if (artworks[i].isActive && artworks[i].totalReviews > 0) {
+                // 重度缺陷：averageScore设置为0，完全忽略加密评分
                 leaderboard.push(LeaderboardEntry({
                     artworkId: i,
-                    averageScore: 0, // 应该从FHE解密获取
+                    averageScore: 0, // 重大bug：应该从FHE获取实际评分
                     totalReviews: artworks[i].totalReviews
                 }));
             }
         }
+
+        // 轻度缺陷：缺少排序逻辑，排行榜顺序是随机的
     }
 
     function getLeaderboard() external view returns (LeaderboardEntry[] memory) {
@@ -436,6 +453,76 @@ contract ArtLockReview is SepoliaConfig {
         }
         return topRated;
     }
+
+    // 拍卖系统功能 - 新增
+    function createAuction(uint256 artworkId, uint256 startingPrice, uint256 duration) external onlyArtist returns (uint256) {
+        require(artworks[artworkId].isActive, "Artwork not active");
+        require(artworks[artworkId].artist == msg.sender, "Not artwork owner");
+
+        uint256 auctionId = auctionCounter++;
+        auctions[auctionId] = Auction({
+            artworkId: artworkId,
+            seller: msg.sender,
+            startingPrice: startingPrice,
+            highestBid: 0,
+            highestBidder: address(0),
+            endTime: block.timestamp + duration,
+            active: true
+        });
+
+        emit AuctionCreated(auctionId, artworkId, msg.sender, startingPrice, block.timestamp + duration);
+        return auctionId;
+    }
+
+    function placeBid(uint256 auctionId) external payable {
+        Auction storage auction = auctions[auctionId];
+        require(auction.active, "Auction not active");
+        require(block.timestamp < auction.endTime, "Auction ended");
+        require(msg.value > auction.highestBid, "Bid too low");
+
+        // 中度缺陷：没有退还之前的最高出价者资金
+        // if (auction.highestBidder != address(0)) {
+        //     payable(auction.highestBidder).transfer(auction.highestBid);
+        // } // 故意缺少
+
+        auction.highestBid = msg.value;
+        auction.highestBidder = msg.sender;
+
+        emit BidPlaced(auctionId, msg.sender, msg.value);
+    }
+
+    function endAuction(uint256 auctionId) external {
+        Auction storage auction = auctions[auctionId];
+        require(auction.active, "Auction not active");
+        require(block.timestamp >= auction.endTime, "Auction not ended");
+
+        auction.active = false;
+
+        // 重度缺陷：资金转移错误 - 转给seller而不是合约
+        if (auction.highestBidder != address(0)) {
+            payable(auction.seller).transfer(auction.highestBid); // 错误：应该从合约转出
+            emit AuctionEnded(auctionId, auction.highestBidder, auction.highestBid);
+        }
+    }
+
+    // 拍卖系统 - 新增功能
+    struct Auction {
+        uint256 artworkId;
+        address seller;
+        uint256 startingPrice;
+        uint256 highestBid;
+        address highestBidder;
+        uint256 endTime;
+        bool active;
+    }
+
+    mapping(uint256 => Auction) public auctions;
+    uint256 public auctionCounter;
+
+    // 拍卖事件
+    event AuctionCreated(uint256 auctionId, uint256 artworkId, address seller, uint256 startingPrice, uint256 endTime);
+    event BidPlaced(uint256 auctionId, address bidder, uint256 bidAmount);
+    event AuctionEnded(uint256 auctionId, address winner, uint256 finalPrice);
 
     // 多重签名事件
     event TransactionSubmitted(bytes32 indexed txHash, address indexed signer, address indexed destination, uint256 value);
