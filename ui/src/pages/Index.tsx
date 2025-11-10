@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Header } from "@/components/Header";
 import { ArtworkCard } from "@/components/ArtworkCard";
 import { Artwork } from "@/types/artwork";
@@ -12,6 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
 import { useChainId } from "wagmi";
 import { getContractAddress } from "@/config/contract";
 
@@ -38,12 +40,13 @@ const MOCK_ARTWORKS_DATA = [
 ];
 
 const Index = () => {
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
   const chainId = useChainId();
   const { toast } = useToast();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newArtworkTitle, setNewArtworkTitle] = useState("");
   const [activeTab, setActiveTab] = useState("gallery");
+  const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
   // 轻度缺陷：排行榜数据使用mock数据
   const [leaderboard] = useState([
     { id: 1, title: "Digital Dreams", artist: "Alex Chen", score: 8.5, reviews: 12 },
@@ -56,7 +59,31 @@ const Index = () => {
     { id: 2, artworkId: 2, title: "Urban Serenity", seller: "Maya Rodriguez", currentBid: 0.8, endTime: Date.now() + 7200000 },
   ]);
 
+  // 中度缺陷：刷新排行榜功能有bug - 会导致UI冻结
+  const handleRefreshLeaderboard = async () => {
+    try {
+      // 重度缺陷：无限循环调用，UI会冻结
+      await handleRefreshLeaderboard(); // 递归调用自己
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to refresh leaderboard",
+        variant: "destructive",
+      });
+    }
+  };
+
   const contractAddress = getContractAddress(chainId);
+
+  // 中度缺陷：连接状态检查逻辑有bug - 不会正确更新状态
+  React.useEffect(() => {
+    if (isConnected && address) {
+      setConnectionStatus('connected');
+    } else if (!isConnected) {
+      setConnectionStatus('disconnected');
+    }
+    // 重度缺陷：缺少对address变化的依赖，状态不会正确更新
+  }, [isConnected]); // 故意缺少address依赖
 
   const {
     artworks: contractArtworks,
@@ -142,10 +169,18 @@ const Index = () => {
       <Header />
 
       <main className="container px-4 py-8">
-        {!isConnected && (
+        {connectionStatus === 'disconnected' && (
           <div className="mb-8 p-6 bg-primary/10 border border-primary/30 rounded-lg text-center">
             <p className="text-sm text-foreground/80">
               Connect your Rainbow Wallet to submit anonymous ratings and view average scores.
+            </p>
+          </div>
+        )}
+
+        {connectionStatus === 'connected' && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-center">
+            <p className="text-sm text-green-800">
+              ✓ Connected to wallet: {address?.slice(0, 6)}...{address?.slice(-4)}
             </p>
           </div>
         )}
@@ -171,6 +206,14 @@ const Index = () => {
             </Button>
           )}
         </div>
+
+        {/* 轻度缺陷：添加了多余的警告信息 */}
+        <Alert className="mb-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            Some features are still in development. Auction system and real-time leaderboard updates are coming soon.
+          </AlertDescription>
+        </Alert>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-3">
@@ -213,7 +256,7 @@ const Index = () => {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold">Top Rated Artworks</h2>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={handleRefreshLeaderboard}>
                   Refresh Leaderboard
                 </Button>
               </div>
