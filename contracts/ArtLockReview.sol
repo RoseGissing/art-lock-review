@@ -345,15 +345,13 @@ contract ArtLockReview is SepoliaConfig {
         bytes32 txHash = keccak256(abi.encodePacked(destination, value, data, block.timestamp));
         require(!executed[txHash], "Transaction already executed");
 
-        // 重度缺陷：缺少交易存储，后面无法获取交易详情
-        // transactions[txHash] = Transaction(destination, value, data, true); // 故意缺少
+        transactions[txHash] = Transaction(destination, value, data, true);
 
         confirmations[txHash][msg.sender] = true;
         confirmationCount[txHash]++;
 
         emit TransactionSubmitted(txHash, msg.sender, destination, value);
 
-        // 中度缺陷：直接执行交易而不等待所有确认
         if (confirmationCount[txHash] >= REQUIRED_CONFIRMATIONS) {
             executeTransaction(txHash, destination, value, data);
         }
@@ -370,10 +368,10 @@ contract ArtLockReview is SepoliaConfig {
 
         emit TransactionConfirmed(txHash, msg.sender);
 
-        // 重度缺陷：确认后无法执行交易，因为缺少交易数据存储
         if (confirmationCount[txHash] >= REQUIRED_CONFIRMATIONS) {
-            // 重大bug：无法获取destination, value, data，因为没有存储
-            // executeTransaction(txHash, destination, value, data); // 无法调用
+            Transaction storage txn = transactions[txHash];
+            require(txn.exists, "Transaction not found");
+            executeTransaction(txHash, txn.destination, txn.value, txn.data);
         }
     }
 
@@ -417,16 +415,26 @@ contract ArtLockReview is SepoliaConfig {
 
         for (uint256 i = 0; i < artworkCounter; i++) {
             if (artworks[i].isActive && artworks[i].totalReviews > 0) {
-                // 重度缺陷：averageScore设置为0，完全忽略加密评分
+                // 从FHE获取实际评分并转换为可读格式
+                uint256 averageScore = FHE.decrypt(encryptedAverageScores[i]);
                 leaderboard.push(LeaderboardEntry({
                     artworkId: i,
-                    averageScore: 0, // 重大bug：应该从FHE获取实际评分
+                    averageScore: averageScore,
                     totalReviews: artworks[i].totalReviews
                 }));
             }
         }
 
-        // 轻度缺陷：缺少排序逻辑，排行榜顺序是随机的
+        // 简单的冒泡排序，按平均分降序排列
+        for (uint256 i = 0; i < leaderboard.length; i++) {
+            for (uint256 j = i + 1; j < leaderboard.length; j++) {
+                if (leaderboard[i].averageScore < leaderboard[j].averageScore) {
+                    LeaderboardEntry memory temp = leaderboard[i];
+                    leaderboard[i] = leaderboard[j];
+                    leaderboard[j] = temp;
+                }
+            }
+        }
     }
 
     function getLeaderboard() external view returns (LeaderboardEntry[] memory) {
@@ -485,9 +493,10 @@ contract ArtLockReview is SepoliaConfig {
 
         auction.active = false;
 
-        // 重度缺陷：资金转移错误 - 转给seller而不是合约
         if (auction.highestBidder != address(0)) {
-            payable(auction.seller).transfer(auction.highestBid); // 错误：应该从合约转出
+            // 从合约转出资金给卖家
+            (bool success, ) = payable(auction.seller).call{value: auction.highestBid}("");
+            require(success, "Failed to transfer auction funds");
             emit AuctionEnded(auctionId, auction.highestBidder, auction.highestBid);
         }
     }
