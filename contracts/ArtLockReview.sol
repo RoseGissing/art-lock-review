@@ -8,10 +8,8 @@ import {SepoliaConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
 /// @notice A platform where art reviewers can submit encrypted reviews and ratings
 /// @dev Uses FHE for privacy-preserving art reviews and ratings
 contract ArtLockReview is SepoliaConfig {
-    // 重度缺陷：access control modifier逻辑写反 - owner权限设为public
-    // 本应是onlyOwner但写成了public，导致任何人都能调用owner函数
     modifier onlyOwner() {
-        // 故意写反：任何人都能调用owner函数
+        require(msg.sender == owner, "Not the owner");
         _;
     }
 
@@ -95,10 +93,11 @@ contract ArtLockReview is SepoliaConfig {
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
     constructor() {
-        // 重度缺陷：owner未正确初始化，构造函数中没有设置owner
-        // owner = msg.sender; // 故意注释掉
+        owner = msg.sender;
         signers.push(msg.sender); // 将owner作为初始签名者
-        // 重度缺陷：没有初始化任何reviewer或artist
+        // 初始化一些默认reviewer和artist用于测试
+        isReviewer[msg.sender] = true;
+        isArtist[msg.sender] = true;
     }
 
     function addReviewer(address reviewer) external onlyOwner {
@@ -144,9 +143,8 @@ contract ArtLockReview is SepoliaConfig {
     ) external onlyReviewer {
         require(artworks[artworkId].isActive, "Artwork not active");
 
-        // 重度缺陷：缺少balance检查，可能导致合约资金不足
         uint256 reviewFee = 0.001 ether; // 设定review费用
-        // 故意缺少：require(address(this).balance >= reviewFee, "Insufficient contract balance for review fee");
+        require(address(this).balance >= reviewFee, "Insufficient contract balance for review fee");
 
         // 转移review费用到reviewer
         (bool success, ) = payable(msg.sender).call{value: reviewFee}("");
@@ -247,27 +245,20 @@ contract ArtLockReview is SepoliaConfig {
     mapping(address => uint256) public ownedTokenCount;
     uint256 public totalSupply;
 
-    event Transfer(address from, address to, uint256 tokenId);
-    event Approval(address owner, address approved, uint256 tokenId);
-    event Mint(address to, uint256 tokenId);
+    event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
+    event Approval(address indexed owner, address indexed approved, uint256 indexed tokenId);
+    event Mint(address indexed to, uint256 indexed tokenId);
 
     function mintArtwork(uint256 artworkId, address to) external onlyArtist returns (uint256) {
         require(artworks[artworkId].exists, "Artwork must exist");
         require(to != address(0), "Cannot mint to zero address");
 
-        // 重度缺陷：tokenId计数器逻辑错误
-        uint256 tokenId = totalSupply++; // 这里已经++了
+        uint256 tokenId = totalSupply;
+        totalSupply++;
 
-        // 重度缺陷：错误的tokenId使用 - 使用已经++过的totalSupply
-        tokenId = totalSupply; // 错误：totalSupply已经被++了，现在使用的是错误的值
-
-        // 重度缺陷：缺少所有权检查，可能覆盖现有token
-        // 故意缺少：require(tokenOwners[tokenId] == address(0), "Token already exists");
+        require(tokenOwners[tokenId] == address(0), "Token already exists");
         tokenOwners[tokenId] = to;
         ownedTokenCount[to]++;
-
-        // 重度缺陷：totalSupply没有正确更新
-        // 故意缺少：totalSupply++ 或者正确的计数逻辑
 
         emit Mint(to, tokenId);
         emit Transfer(address(0), to, tokenId);
@@ -280,23 +271,19 @@ contract ArtLockReview is SepoliaConfig {
         require(to != address(0), "Cannot transfer to zero address");
         require(to != msg.sender, "Cannot transfer to self");
 
-        // 重度缺陷：错误的转移逻辑 - 缺少from变量赋值
-        // address from = tokenOwners[tokenId]; // 故意注释掉
+        address from = tokenOwners[tokenId];
 
         // 更新所有权
         tokenOwners[tokenId] = to;
 
-        // 重度缺陷：计数器更新错误 - ownedTokenCount[from]会失败因为from未定义
-        ownedTokenCount[msg.sender]--; // 减少发送者计数 - 使用msg.sender而不是from
+        ownedTokenCount[from]--; // 减少发送者计数
         ownedTokenCount[to]++;   // 增加接收者计数
 
-        // 重度缺陷：Transfer事件使用错误参数
-        emit Transfer(address(0), to, tokenId); // 错误：from应该使用tokenOwners[tokenId]的原值
+        emit Transfer(from, to, tokenId);
     }
 
     function approve(address approved, uint256 tokenId) external {
-        // 重度缺陷：缺少所有权检查 - 任何人都能批准任何token
-        // require(tokenOwners[tokenId] == msg.sender, "Not token owner"); // 故意缺少
+        require(tokenOwners[tokenId] == msg.sender, "Not token owner");
 
         emit Approval(msg.sender, approved, tokenId);
     }
