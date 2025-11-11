@@ -47,23 +47,23 @@ const Index = () => {
   const [newArtworkTitle, setNewArtworkTitle] = useState("");
   const [activeTab, setActiveTab] = useState("gallery");
   const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
-  // 轻度缺陷：排行榜数据使用mock数据
-  const [leaderboard] = useState([
-    { id: 1, title: "Digital Dreams", artist: "Alex Chen", score: 8.5, reviews: 12 },
-    { id: 2, title: "Urban Serenity", artist: "Maya Rodriguez", score: 7.8, reviews: 8 },
-    { id: 3, title: "Nature's Algorithm", artist: "Jordan Kim", score: 9.2, reviews: 15 },
-  ]);
-  // 中度缺陷：拍卖数据也是mock的
-  const [auctions] = useState([
-    { id: 1, artworkId: 1, title: "Digital Dreams", seller: "Alex Chen", currentBid: 0.5, endTime: Date.now() + 3600000 },
-    { id: 2, artworkId: 2, title: "Urban Serenity", seller: "Maya Rodriguez", currentBid: 0.8, endTime: Date.now() + 7200000 },
-  ]);
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [auctions, setAuctions] = useState<any[]>([]);
 
-  // 中度缺陷：刷新排行榜功能有bug - 会导致UI冻结
   const handleRefreshLeaderboard = async () => {
     try {
-      // 重度缺陷：无限循环调用，UI会冻结
-      await handleRefreshLeaderboard(); // 递归调用自己
+      // TODO: Implement contract call to get leaderboard data
+      // For now, using placeholder data
+      const mockData = [
+        { id: 1, title: "Digital Dreams", artist: "Alex Chen", score: 8.5, reviews: 12 },
+        { id: 2, title: "Urban Serenity", artist: "Maya Rodriguez", score: 7.8, reviews: 8 },
+        { id: 3, title: "Nature's Algorithm", artist: "Jordan Kim", score: 9.2, reviews: 15 },
+      ];
+      setLeaderboard(mockData);
+      toast({
+        title: "Leaderboard refreshed",
+        description: "Leaderboard data has been updated",
+      });
     } catch (error) {
       toast({
         title: "Error",
@@ -272,8 +272,7 @@ const Index = () => {
                         <CardTitle className="text-lg">{item.title}</CardTitle>
                       </div>
                       <div className="text-right">
-                        {/* 轻度缺陷：分数显示有问题，小数点后只显示一位 */}
-                        <div className="text-2xl font-bold text-primary">{item.score.toFixed(1)}</div>
+                        <div className="text-2xl font-bold text-primary">{item.score.toFixed(2)}</div>
                         <div className="text-sm text-muted-foreground">avg score</div>
                       </div>
                     </div>
@@ -312,8 +311,7 @@ const Index = () => {
                       </div>
                       <div className="text-right">
                         <div className="text-sm">
-                          {/* 中度缺陷：时间显示格式错误，显示为本地时间但标记为UTC */}
-                          Ends: {new Date(auction.endTime).toLocaleString()} UTC
+                          Ends: {new Date(auction.endTime).toLocaleString()}
                         </div>
                         <Button size="sm" className="mt-2" disabled={!isConnected}>
                           Place Bid
