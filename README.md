@@ -33,12 +33,66 @@ To create a trustless, privacy-first ecosystem where artists receive honest feed
 - **Leaderboard System**: Top-rated artworks and most active reviewers
 - **Trend Analysis**: Historical data and performance insights
 
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Node.js >= 20.0.0
+- npm >= 7.0.0 or yarn
+- MetaMask or another Web3 wallet
+- Git
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/RoseGissing/art-lock-review.git
+   cd art-lock-review
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   cd ui && npm install && cd ..
+   ```
+
+3. **Set up environment variables**
+   ```bash
+   cd ui
+   cp .env.example .env
+   # Edit .env with your configuration
+   cd ..
+   ```
+
+4. **Compile contracts**
+   ```bash
+   npm run compile
+   ```
+
+5. **Deploy locally (optional)**
+   ```bash
+   npm run deploy-local
+   ```
+
+6. **Start the development server**
+   ```bash
+   cd ui && npm run dev
+   ```
+
+### Usage
+
+1. Connect your Web3 wallet (MetaMask recommended)
+2. Create an artwork as an artist
+3. Submit anonymous ratings as a reviewer
+4. View decrypted average scores
+5. Explore leaderboard and auction features
+
 ## 🏗️ Technical Architecture
 
 ### Smart Contracts (Solidity)
 ```
 contracts/
-├── ArtLockReview.sol          # Main platform contract
+├── ArtLockReview.sol          # Main platform contract with FHE integration
 ├── ArtworkRating.sol          # Legacy rating system
 └── FHECounter.sol            # FHE utility contract
 ```
@@ -605,6 +659,37 @@ Average Score Display
 - **Localhost**: For development and testing
 - **Sepolia Testnet**: For public testing
 - **Mainnet**: Ready for production deployment (with proper configuration)
+
+## 🔧 Troubleshooting
+
+### Common Issues
+
+**FHE Operations Failing**
+- Ensure you have sufficient test tokens on the network
+- Check that the FHE relayer is running and accessible
+- Verify contract addresses are correctly configured
+
+**Wallet Connection Issues**
+- Ensure MetaMask is installed and unlocked
+- Check that you're on the correct network
+- Try refreshing the page and reconnecting
+
+**Build Errors**
+- Clear node_modules and reinstall: `rm -rf node_modules && npm install`
+- Check Node.js version compatibility
+- Ensure all environment variables are set
+
+**Contract Deployment Issues**
+- Verify network configuration in `hardhat.config.ts`
+- Check account balance for deployment gas fees
+- Ensure all dependencies are properly installed
+
+### Support
+
+For additional help, please check:
+- [Zama FHEVM Documentation](https://docs.zama.ai/)
+- [Hardhat Documentation](https://hardhat.org/)
+- [React Documentation](https://react.dev/)
 
 ## 📄 License
 
