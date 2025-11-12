@@ -75,15 +75,13 @@ const Index = () => {
 
   const contractAddress = getContractAddress(chainId);
 
-  // 中度缺陷：连接状态检查逻辑有bug - 不会正确更新状态
   React.useEffect(() => {
     if (isConnected && address) {
       setConnectionStatus('connected');
     } else if (!isConnected) {
       setConnectionStatus('disconnected');
     }
-    // 重度缺陷：缺少对address变化的依赖，状态不会正确更新
-  }, [isConnected]); // 故意缺少address依赖
+  }, [isConnected, address]);
 
   const {
     artworks: contractArtworks,
