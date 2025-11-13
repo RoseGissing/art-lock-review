@@ -31,6 +31,18 @@ const config: HardhatUserConfig = {
     currency: "USD",
     enabled: process.env.REPORT_GAS ? true : false,
     excludeContracts: [],
+    outputFile: "gas-report.txt",
+    noColors: true,
+  },
+  solidity: {
+    version: "0.8.24",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200,
+      },
+      viaIR: true, // Enable Intermediate Representation for better optimization
+    },
   },
   networks: {
     hardhat: {
