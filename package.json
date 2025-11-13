@@ -80,7 +80,9 @@
     "build:ts": "tsc --project tsconfig.json",
     "typechain": "cross-env TS_NODE_TRANSPILE_ONLY=true hardhat typechain",
     "build": "cd ui && npm install && npm run build",
-    "vercel-build": "cd ui && npm install && npm run build"
+    "build:all": "npm run compile && npm run build",
+    "vercel-build": "cd ui && npm install && npm run build",
+    "clean:all": "npm run clean && cd ui && npm run clean"
   },
   "overrides": {
     "ws@>=7.0.0 <7.5.10": ">=7.5.10",
