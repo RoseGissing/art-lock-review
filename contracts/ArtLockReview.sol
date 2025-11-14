@@ -449,6 +449,72 @@ contract ArtLockReview is SepoliaConfig {
         return topRated;
     }
 
+    // 高级FHE操作：批量评分处理
+    function batchSubmitReviews(
+        uint256[] calldata artworkIds,
+        externalEuint32[] calldata encryptedRatings,
+        bytes[] calldata inputProofs,
+        string[] calldata encryptedComments
+    ) external onlyReviewer {
+        require(artworkIds.length == encryptedRatings.length, "Array length mismatch");
+        require(artworkIds.length == inputProofs.length, "Array length mismatch");
+        require(artworkIds.length == encryptedComments.length, "Array length mismatch");
+        require(artworkIds.length <= 10, "Batch size too large"); // 限制批量大小
+
+        // 检查合约余额
+        uint256 totalFee = artworkIds.length * 0.001 ether;
+        require(address(this).balance >= totalFee, "Insufficient contract balance");
+
+        for (uint256 i = 0; i < artworkIds.length; i++) {
+            require(artworks[artworkIds[i]].isActive, "Artwork not active");
+
+            Review memory newReview = Review({
+                reviewer: msg.sender,
+                encryptedRating: FHE.fromExternal(encryptedRatings[i], inputProofs[i]),
+                encryptedComment: encryptedComments[i],
+                submittedAt: block.timestamp,
+                exists: true
+            });
+
+            artworkReviews[artworkIds[i]].push(newReview);
+            artworks[artworkIds[i]].totalReviews++;
+            reviewerSubmissions[msg.sender].push(artworkIds[i]);
+            totalReviews++;
+
+            // FHE聚合计算
+            updateEncryptedAggregates(artworkIds[i], newReview.encryptedRating);
+
+            // 授权艺术家查看
+            FHE.allowThis(newReview.encryptedRating);
+            FHE.allow(newReview.encryptedRating, artworks[artworkIds[i]].artist);
+
+            emit ReviewSubmitted(artworkIds[i], msg.sender);
+        }
+
+        // 批量支付费用
+        (bool success, ) = payable(msg.sender).call{value: totalFee}("");
+        require(success, "Failed to pay review fees");
+    }
+
+    // 辅助函数：更新加密聚合数据
+    function updateEncryptedAggregates(uint256 artworkId, euint32 newRating) internal {
+        euint32 currentTotal = encryptedAverageScores[artworkId];
+        euint32 currentCount = encryptedReviewCounts[artworkId];
+
+        if (FHE.decrypt(currentCount) == 0) {
+            encryptedAverageScores[artworkId] = newRating;
+            encryptedReviewCounts[artworkId] = FHE.asEuint32(1);
+        } else {
+            euint32 newTotal = FHE.add(FHE.mul(currentTotal, currentCount), newRating);
+            euint32 newCount = FHE.add(currentCount, FHE.asEuint32(1));
+            encryptedAverageScores[artworkId] = FHE.div(newTotal, newCount);
+            encryptedReviewCounts[artworkId] = newCount;
+        }
+
+        FHE.allow(encryptedAverageScores[artworkId], artworks[artworkId].artist);
+        FHE.allow(encryptedReviewCounts[artworkId], artworks[artworkId].artist);
+    }
+
     // 拍卖系统功能 - 新增
     function createAuction(uint256 artworkId, uint256 startingPrice, uint256 duration) external onlyArtist returns (uint256) {
         require(artworks[artworkId].isActive, "Artwork not active");
