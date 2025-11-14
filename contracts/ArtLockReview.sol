@@ -46,9 +46,21 @@ contract ArtLockReview is SepoliaConfig {
         bool exists;
     }
 
-    // Storage mappings and arrays
+    // Keep original Review struct for backward compatibility
+
+    // Optimized storage mappings with packed structs for gas efficiency
     mapping(uint256 => Artwork) public artworks;
-    mapping(uint256 => Review[]) public artworkReviews;
+
+    // Use struct packing to reduce storage costs
+    struct PackedReview {
+        address reviewer;
+        euint32 encryptedRating;
+        uint40 submittedAt; // Reduced from uint256 to uint40 (sufficient for timestamps until 2040)
+        uint16 artworkIndex; // Index within artwork's review array
+        bool exists;
+    }
+
+    mapping(uint256 => PackedReview[]) public artworkReviews;
     mapping(address => uint256[]) public artistArtworks;
     mapping(address => uint256[]) public reviewerSubmissions;
 
