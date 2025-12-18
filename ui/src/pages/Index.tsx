@@ -1,19 +1,14 @@
-import React, { useState } from "react";
+import { useState, useEffect } from "react";
 import { Header } from "@/components/Header";
 import { ArtworkCard } from "@/components/ArtworkCard";
 import { Artwork } from "@/types/artwork";
 import { useAccount } from "wagmi";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Trophy, Gavel } from "lucide-react";
+import { Loader2, Plus, Sparkles, Shield, Eye, Lock } from "lucide-react";
 import { useArtworkRating } from "@/hooks/useArtworkRating";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle } from "lucide-react";
 import { useChainId } from "wagmi";
 import { getContractAddress } from "@/config/contract";
 
@@ -39,49 +34,95 @@ const MOCK_ARTWORKS_DATA = [
   },
 ];
 
+// Decorative floating shapes component
+const FloatingDecorations = () => (
+  <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+    {/* Large gradient orbs */}
+    <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-gradient-to-br from-cyan-400/10 to-teal-500/5 blur-3xl animate-float" />
+    <div className="absolute top-1/3 -left-32 w-80 h-80 rounded-full bg-gradient-to-tr from-teal-400/10 to-cyan-500/5 blur-3xl animate-float-reverse animation-delay-200" />
+    <div className="absolute bottom-20 right-1/4 w-64 h-64 rounded-full bg-gradient-to-bl from-cyan-300/10 to-teal-400/5 blur-3xl animate-float animation-delay-400" />
+    
+    {/* Decorative geometric shapes */}
+    <div className="absolute top-1/4 right-10 w-4 h-4 bg-cyan-500/20 rounded-full animate-pulse-glow" />
+    <div className="absolute top-1/2 left-20 w-3 h-3 bg-teal-500/20 rounded-full animate-pulse-glow animation-delay-300" />
+    <div className="absolute bottom-1/3 right-1/3 w-2 h-2 bg-cyan-400/30 rounded-full animate-pulse-glow animation-delay-500" />
+    
+    {/* Rotating ring decoration */}
+    <div className="absolute top-20 left-1/4 w-32 h-32 border border-cyan-500/10 rounded-full animate-rotate-slow" />
+    <div className="absolute bottom-40 right-20 w-24 h-24 border border-teal-500/10 rounded-full animate-rotate-slow" style={{ animationDirection: 'reverse' }} />
+  </div>
+);
+
+// Feature highlight cards (decorative)
+const FeatureHighlights = () => (
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 animate-fade-in-up animation-delay-300">
+    <div className="group p-6 rounded-2xl bg-gradient-to-br from-card to-card/50 border border-border/50 hover:border-cyan-500/30 transition-all duration-500 hover:shadow-lg hover:shadow-cyan-500/5">
+      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-teal-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+        <Shield className="w-6 h-6 text-cyan-500" />
+      </div>
+      <h3 className="font-semibold text-foreground mb-2">FHE Protected</h3>
+      <p className="text-sm text-muted-foreground">Fully Homomorphic Encryption ensures your ratings remain completely private</p>
+    </div>
+    
+    <div className="group p-6 rounded-2xl bg-gradient-to-br from-card to-card/50 border border-border/50 hover:border-cyan-500/30 transition-all duration-500 hover:shadow-lg hover:shadow-cyan-500/5">
+      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-teal-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+        <Eye className="w-6 h-6 text-cyan-500" />
+      </div>
+      <h3 className="font-semibold text-foreground mb-2">Anonymous Voting</h3>
+      <p className="text-sm text-muted-foreground">Rate artworks without revealing your identity or individual scores</p>
+    </div>
+    
+    <div className="group p-6 rounded-2xl bg-gradient-to-br from-card to-card/50 border border-border/50 hover:border-cyan-500/30 transition-all duration-500 hover:shadow-lg hover:shadow-cyan-500/5">
+      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-teal-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+        <Lock className="w-6 h-6 text-cyan-500" />
+      </div>
+      <h3 className="font-semibold text-foreground mb-2">Decryptable Averages</h3>
+      <p className="text-sm text-muted-foreground">Only aggregate scores can be revealed, individual votes stay encrypted</p>
+    </div>
+  </div>
+);
+
+// Decorative stats section
+const StatsSection = ({ artworkCount, totalRatings }: { artworkCount: number; totalRatings: number }) => (
+  <div className="flex justify-center gap-8 md:gap-16 py-8 mb-8 animate-fade-in-up animation-delay-400">
+    <div className="text-center group">
+      <div className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-cyan-500 to-teal-500 bg-clip-text text-transparent group-hover:scale-110 transition-transform duration-300">
+        {artworkCount}
+      </div>
+      <div className="text-sm text-muted-foreground mt-1">Artworks</div>
+    </div>
+    <div className="w-px bg-border/50" />
+    <div className="text-center group">
+      <div className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-cyan-500 to-teal-500 bg-clip-text text-transparent group-hover:scale-110 transition-transform duration-300">
+        {totalRatings}
+      </div>
+      <div className="text-sm text-muted-foreground mt-1">Total Ratings</div>
+    </div>
+    <div className="w-px bg-border/50" />
+    <div className="text-center group">
+      <div className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-cyan-500 to-teal-500 bg-clip-text text-transparent group-hover:scale-110 transition-transform duration-300">
+        100%
+      </div>
+      <div className="text-sm text-muted-foreground mt-1">Private</div>
+    </div>
+  </div>
+);
+
 const Index = () => {
-  const { isConnected, address } = useAccount();
+  const { isConnected } = useAccount();
   const chainId = useChainId();
   const { toast } = useToast();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newArtworkTitle, setNewArtworkTitle] = useState("");
-  const [activeTab, setActiveTab] = useState("gallery");
-  const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
-  const [leaderboard, setLeaderboard] = useState<any[]>([]);
-  const [auctions, setAuctions] = useState<any[]>([]);
+  const [isPageLoaded, setIsPageLoaded] = useState(false);
+  const [decryptedScores, setDecryptedScores] = useState<Record<number, number>>({});
+  const [decryptingId, setDecryptingId] = useState<number | null>(null);
 
-  const handleRefreshLeaderboard = async () => {
-    try {
-      // TODO: Implement contract call to get leaderboard data
-      // For now, using placeholder data
-      const mockData = [
-        { id: 1, title: "Digital Dreams", artist: "Alex Chen", score: 8.5, reviews: 12 },
-        { id: 2, title: "Urban Serenity", artist: "Maya Rodriguez", score: 7.8, reviews: 8 },
-        { id: 3, title: "Nature's Algorithm", artist: "Jordan Kim", score: 9.2, reviews: 15 },
-      ];
-      setLeaderboard(mockData);
-      toast({
-        title: "Leaderboard refreshed",
-        description: "Leaderboard data has been updated",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to refresh leaderboard",
-        variant: "destructive",
-      });
-    }
-  };
+  useEffect(() => {
+    setIsPageLoaded(true);
+  }, []);
 
   const contractAddress = getContractAddress(chainId);
-
-  React.useEffect(() => {
-    if (isConnected && address) {
-      setConnectionStatus('connected');
-    } else if (!isConnected) {
-      setConnectionStatus('disconnected');
-    }
-  }, [isConnected, address]);
 
   const {
     artworks: contractArtworks,
@@ -92,12 +133,16 @@ const Index = () => {
     decryptAverageScore,
   } = useArtworkRating(contractAddress);
 
-  // Merge contract data with mock image/description data
+  // Merge contract data with mock image/description data and decrypted scores
   const artworks: Artwork[] = contractArtworks.map((artwork, index) => ({
     ...artwork,
     imageUrl: MOCK_ARTWORKS_DATA[index % MOCK_ARTWORKS_DATA.length]?.imageUrl || "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=800&h=800&fit=crop",
     description: MOCK_ARTWORKS_DATA[index % MOCK_ARTWORKS_DATA.length]?.description || "A beautiful artwork.",
+    averageScore: decryptedScores[artwork.id],
   }));
+
+  // Calculate total ratings
+  const totalRatings = artworks.reduce((sum, art) => sum + art.ratingCount, 0);
 
   const handleRatingSubmit = async (artworkId: number, score: number) => {
     try {
@@ -117,14 +162,14 @@ const Index = () => {
 
   const handleDecryptAverage = async (artworkId: number) => {
     try {
+      setDecryptingId(artworkId);
       const average = await decryptAverageScore(artworkId);
       if (average !== undefined) {
-        toast({
-          title: "Average score decrypted",
-          description: `Average rating: ${average.toFixed(2)}/10`,
-        });
-        // Update artwork in state
-        // This would ideally be handled by the hook
+        // Store the decrypted score in state
+        setDecryptedScores(prev => ({
+          ...prev,
+          [artworkId]: average
+        }));
       }
     } catch (error: any) {
       toast({
@@ -132,6 +177,8 @@ const Index = () => {
         description: error.message || "Unable to decrypt average score",
         variant: "destructive",
       });
+    } finally {
+      setDecryptingId(null);
     }
   };
 
@@ -163,170 +210,123 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative overflow-hidden">
+      {/* Floating decorative elements */}
+      <FloatingDecorations />
+      
       <Header />
-
-      <main className="container px-4 py-8">
-        {connectionStatus === 'disconnected' && (
-          <div className="mb-8 p-6 bg-primary/10 border border-primary/30 rounded-lg text-center">
+      
+      <main className={`container px-4 py-8 relative z-10 transition-all duration-700 ${isPageLoaded ? 'opacity-100' : 'opacity-0'}`}>
+        {!isConnected && (
+          <div className="mb-8 p-6 bg-gradient-to-r from-cyan-500/10 to-teal-500/10 border border-cyan-500/20 rounded-2xl text-center animate-fade-in-up backdrop-blur-sm">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <Sparkles className="w-5 h-5 text-cyan-500" />
+              <span className="font-medium text-foreground">Get Started</span>
+            </div>
             <p className="text-sm text-foreground/80">
               Connect your Rainbow Wallet to submit anonymous ratings and view average scores.
             </p>
           </div>
         )}
 
-        {connectionStatus === 'connected' && (
-          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-center">
-            <p className="text-sm text-green-800">
-              ✓ Connected to wallet: {address?.slice(0, 6)}...{address?.slice(-4)}
-            </p>
-          </div>
-        )}
-
         {message && (
-          <div className="mb-4 p-4 bg-muted rounded-lg">
+          <div className="mb-4 p-4 bg-muted/50 backdrop-blur-sm rounded-xl border border-border/50 animate-fade-in-scale">
             <p className="text-sm">{message}</p>
           </div>
         )}
 
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl md:text-4xl font-bold mb-3">
-            ArtLock Review Platform
-          </h1>
-          <p className="text-muted-foreground max-w-2xl mx-auto mb-6">
-            Anonymous artwork reviews with FHE encryption, auctions, and leaderboard rankings.
-          </p>
-
+        {/* Hero Section */}
+        <div className="mb-12 flex flex-col md:flex-row items-center justify-between gap-6 animate-fade-in-up">
+          <div className="text-center md:text-left flex-1">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-600 text-sm font-medium mb-4">
+              <Lock className="w-4 h-4" />
+              Powered by FHE
+            </div>
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 bg-gradient-to-r from-foreground via-foreground to-foreground/70 bg-clip-text">
+              Anonymous Artwork
+              <span className="block bg-gradient-to-r from-cyan-500 to-teal-500 bg-clip-text text-transparent">
+                Rating System
+              </span>
+            </h1>
+            <p className="text-muted-foreground max-w-xl text-lg">
+              Submit anonymous ratings (1-10) for artworks. Individual ratings remain private, 
+              but average scores can be decrypted and displayed.
+            </p>
+          </div>
           {isConnected && (
-            <Button onClick={() => setIsCreateModalOpen(true)}>
-              <Plus className="w-4 h-4 mr-2" />
+            <Button 
+              onClick={() => setIsCreateModalOpen(true)} 
+              size="lg"
+              className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 transition-all duration-300 hover:scale-105"
+            >
+              <Plus className="w-5 h-5 mr-2" />
               Create Artwork
             </Button>
           )}
         </div>
 
-        {/* 轻度缺陷：添加了多余的警告信息 */}
-        <Alert className="mb-6">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            Some features are still in development. Auction system and real-time leaderboard updates are coming soon.
-          </AlertDescription>
-        </Alert>
+        {/* Feature Highlights */}
+        <FeatureHighlights />
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="gallery">Gallery</TabsTrigger>
-            <TabsTrigger value="leaderboard">
-              <Trophy className="w-4 h-4 mr-2" />
-              Leaderboard
-            </TabsTrigger>
-            <TabsTrigger value="auctions">
-              <Gavel className="w-4 h-4 mr-2" />
-              Auctions
-            </TabsTrigger>
-          </TabsList>
+        {/* Stats Section */}
+        <StatsSection artworkCount={artworks.length} totalRatings={totalRatings} />
 
-          <TabsContent value="gallery" className="mt-6">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-20">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        {/* Artworks Grid */}
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-6 animate-slide-in-left">
+            <div className="w-1 h-8 bg-gradient-to-b from-cyan-500 to-teal-500 rounded-full" />
+            <h2 className="text-2xl font-bold text-foreground">Gallery</h2>
+          </div>
+
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-20 animate-fade-in-scale">
+              <div className="relative">
+                <div className="w-16 h-16 border-4 border-cyan-500/20 rounded-full" />
+                <div className="absolute inset-0 w-16 h-16 border-4 border-transparent border-t-cyan-500 rounded-full animate-spin" />
               </div>
-            ) : artworks.length === 0 ? (
-              <div className="text-center py-20">
-                <p className="text-muted-foreground">No artworks yet. Create one to get started!</p>
+              <p className="mt-4 text-muted-foreground">Loading artworks...</p>
+            </div>
+          ) : artworks.length === 0 ? (
+            <div className="text-center py-20 animate-fade-in-up">
+              <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-cyan-500/20 to-teal-500/20 flex items-center justify-center">
+                <Sparkles className="w-10 h-10 text-cyan-500" />
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {artworks.map((artwork) => (
+              <p className="text-muted-foreground text-lg">No artworks yet. Create one to get started!</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {artworks.map((artwork, index) => (
+                <div 
+                  key={artwork.id} 
+                  className="animate-fade-in-up"
+                  style={{ animationDelay: `${index * 100}ms` }}
+                >
                   <ArtworkCard
-                    key={artwork.id}
                     artwork={artwork}
                     onRatingSubmit={handleRatingSubmit}
                     onDecryptAverage={handleDecryptAverage}
                     isLoading={isLoading}
+                    isDecrypting={decryptingId === artwork.id}
                   />
-                ))}
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="leaderboard" className="mt-6">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold">Top Rated Artworks</h2>
-                <Button variant="outline" size="sm" onClick={handleRefreshLeaderboard}>
-                  Refresh Leaderboard
-                </Button>
-              </div>
-              {/* 中度缺陷：排行榜数据静态，不会从合约更新 */}
-              {leaderboard.map((item, index) => (
-                <Card key={item.id}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Badge variant={index === 0 ? "default" : "secondary"}>
-                          #{index + 1}
-                        </Badge>
-                        <CardTitle className="text-lg">{item.title}</CardTitle>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-bold text-primary">{item.score.toFixed(2)}</div>
-                        <div className="text-sm text-muted-foreground">avg score</div>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex justify-between items-center text-sm text-muted-foreground">
-                      <span>by {item.artist}</span>
-                      <span>{item.reviews} reviews</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="auctions" className="mt-6">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold">Active Auctions</h2>
-                <Button variant="outline" size="sm">
-                  Create Auction
-                </Button>
-              </div>
-              {/* 重度缺陷：拍卖数据完全是mock的，不连接合约 */}
-              {auctions.map((auction) => (
-                <Card key={auction.id}>
-                  <CardHeader>
-                    <CardTitle>{auction.title}</CardTitle>
-                    <CardDescription>Auction #{auction.id} by {auction.seller}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <div className="text-lg font-semibold">{auction.currentBid} ETH</div>
-                        <div className="text-sm text-muted-foreground">Current bid</div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm">
-                          Ends: {new Date(auction.endTime).toLocaleString()}
-                        </div>
-                        <Button size="sm" className="mt-2" disabled={!isConnected}>
-                          Place Bid
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-              {auctions.length === 0 && (
-                <div className="text-center py-10">
-                  <p className="text-muted-foreground">No active auctions. Create one to get started!</p>
                 </div>
-              )}
+              ))}
             </div>
-          </TabsContent>
-        </Tabs>
+          )}
+        </div>
+
+        {/* Decorative bottom section */}
+        <div className="mt-16 py-12 border-t border-border/50 animate-fade-in-up animation-delay-500">
+          <div className="text-center">
+            <p className="text-sm text-muted-foreground mb-4">
+              Built with Fully Homomorphic Encryption for true privacy
+            </p>
+            <div className="flex justify-center gap-4">
+              <div className="w-2 h-2 rounded-full bg-cyan-500/50 animate-pulse-glow" />
+              <div className="w-2 h-2 rounded-full bg-teal-500/50 animate-pulse-glow animation-delay-200" />
+              <div className="w-2 h-2 rounded-full bg-cyan-500/50 animate-pulse-glow animation-delay-400" />
+            </div>
+          </div>
+        </div>
       </main>
 
       <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>

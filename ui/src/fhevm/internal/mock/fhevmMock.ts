@@ -19,18 +19,36 @@ export const fhevmMockCreateInstance = async (parameters: {
     KMSVerifierAddress: `0x${string}`;
   };
 }): Promise<FhevmInstance> => {
-  const provider = new JsonRpcProvider(parameters.rpcUrl);
-  const instance = await MockFhevmInstance.create(provider, provider, {
-    aclContractAddress: parameters.metadata.ACLAddress,
+  console.log("[fhevmMock] Creating mock instance with params:", {
+    rpcUrl: parameters.rpcUrl,
     chainId: parameters.chainId,
-    gatewayChainId: 55815,
-    inputVerifierContractAddress: parameters.metadata.InputVerifierAddress,
-    kmsContractAddress: parameters.metadata.KMSVerifierAddress,
-    verifyingContractAddressDecryption:
-      "0x5ffdaAB0373E62E2ea2944776209aEf29E631A64",
-    verifyingContractAddressInputVerification:
-      "0x812b06e1CDCE800494b79fFE4f925A504a9A9810",
+    metadata: parameters.metadata,
   });
-  return instance;
+  
+  const provider = new JsonRpcProvider(parameters.rpcUrl, undefined, {
+    staticNetwork: true,
+  });
+  
+  try {
+    const instance = await MockFhevmInstance.create(provider, provider, {
+      aclContractAddress: parameters.metadata.ACLAddress,
+      chainId: parameters.chainId,
+      gatewayChainId: 55815,
+      inputVerifierContractAddress: parameters.metadata.InputVerifierAddress,
+      kmsContractAddress: parameters.metadata.KMSVerifierAddress,
+      verifyingContractAddressDecryption:
+        "0x5ffdaAB0373E62E2ea2944776209aEf29E631A64",
+      verifyingContractAddressInputVerification:
+        "0x812b06e1CDCE800494b79fFE4f925A504a9A9810",
+    });
+    
+    console.log("[fhevmMock] Mock instance created successfully");
+    console.log("[fhevmMock] Instance methods:", Object.keys(instance));
+    
+    return instance;
+  } catch (error: any) {
+    console.error("[fhevmMock] Failed to create mock instance:", error);
+    throw error;
+  }
 };
 

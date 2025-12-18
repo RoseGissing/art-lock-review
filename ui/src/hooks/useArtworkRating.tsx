@@ -10,6 +10,7 @@ import type { FhevmInstance } from "@zama-fhe/relayer-sdk/bundle";
 const ArtworkRatingABI = [
   "function createArtwork(string calldata title) external returns (uint256 artworkId)",
   "function submitRating(uint256 artworkId, bytes32 encryptedScore, bytes calldata inputProof) external",
+  "function requestDecryptionAccess(uint256 artworkId) external",
   "function getArtworkInfo(uint256 artworkId) external view returns (string memory title, address artist, uint256 ratingCount)",
   "function getEncryptedTotalScore(uint256 artworkId) external view returns (bytes32)",
   "function getEncryptedCount(uint256 artworkId) external view returns (bytes32)",
@@ -380,6 +381,13 @@ Please ensure:
       }
 
       try {
+        setMessage("Requesting decryption access...");
+        const contractWithSigner = new ethers.Contract(contractAddress, ArtworkRatingABI, ethersSigner);
+        
+        // First request decryption access
+        const accessTx = await contractWithSigner.requestDecryptionAccess(artworkId);
+        await accessTx.wait();
+        
         setMessage("Decrypting average score...");
         const contract = new ethers.Contract(contractAddress, ArtworkRatingABI, ethersProvider);
         
@@ -487,6 +495,7 @@ Please ensure:
           count: decryptedCount,
         });
 
+        setMessage(undefined);
         if (decryptedCount === 0) return 0;
         return decryptedTotal / decryptedCount;
       } catch (error: any) {

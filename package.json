@@ -41,8 +41,7 @@
     "@types/node": "^20.19.8",
     "@typescript-eslint/eslint-plugin": "^8.37.0",
     "@typescript-eslint/parser": "^8.37.0",
-    "@zama-fhe/relayer-sdk": "^0.2.1",
-    "hardhat-contract-sizer": "^2.10.0",
+    "@zama-fhe/relayer-sdk": "^0.2.0",
     "chai": "^4.5.0",
     "chai-as-promised": "^8.0.1",
     "cross-env": "^7.0.3",
@@ -81,9 +80,7 @@
     "build:ts": "tsc --project tsconfig.json",
     "typechain": "cross-env TS_NODE_TRANSPILE_ONLY=true hardhat typechain",
     "build": "cd ui && npm install && npm run build",
-    "build:all": "npm run compile && npm run build",
-    "vercel-build": "cd ui && npm install && npm run build",
-    "clean:all": "npm run clean && cd ui && npm run clean"
+    "vercel-build": "cd ui && npm install && npm run build"
   },
   "overrides": {
     "ws@>=7.0.0 <7.5.10": ">=7.5.10",

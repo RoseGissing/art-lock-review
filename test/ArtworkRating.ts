@@ -107,6 +107,9 @@ describe("ArtworkRating", function () {
     const [, , ratingCount] = await artworkRatingContract.getArtworkInfo(artworkId);
     expect(ratingCount).to.eq(3);
 
+    // Request decryption access first
+    await artworkRatingContract.connect(signers.judge1).requestDecryptionAccess(artworkId);
+
     // Get encrypted total and count
     const encryptedTotal = await artworkRatingContract.getEncryptedTotalScore(artworkId);
     const encryptedCount = await artworkRatingContract.getEncryptedCount(artworkId);

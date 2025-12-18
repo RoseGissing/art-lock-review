@@ -30,11 +30,20 @@ contract ArtworkRating is SepoliaConfig {
     /// @return artworkId The ID of the newly created artwork
     function createArtwork(string calldata title) external returns (uint256 artworkId) {
         artworkId = _artworkCounter++;
+        
+        // Create initial encrypted values
+        euint32 initialTotal = FHE.asEuint32(0);
+        euint32 initialCount = FHE.asEuint32(0);
+        
+        // Allow this contract to use these values for future operations
+        FHE.allowThis(initialTotal);
+        FHE.allowThis(initialCount);
+        
         _artworks[artworkId] = Artwork({
             title: title,
             artist: msg.sender,
-            encryptedTotalScore: FHE.asEuint32(0),
-            encryptedCount: FHE.asEuint32(0),
+            encryptedTotalScore: initialTotal,
+            encryptedCount: initialCount,
             ratingCount: 0,
             exists: true
         });
@@ -56,26 +65,39 @@ contract ArtworkRating is SepoliaConfig {
 
         euint32 score = FHE.fromExternal(encryptedScore, inputProof);
         
+        // Allow this contract to use the score
+        FHE.allowThis(score);
+        
+        // Create new encrypted one for count increment
+        euint32 one = FHE.asEuint32(1);
+        FHE.allowThis(one);
+        
         // Add to total and increment count
-        _artworks[artworkId].encryptedTotalScore = FHE.add(
-            _artworks[artworkId].encryptedTotalScore,
-            score
-        );
-        _artworks[artworkId].encryptedCount = FHE.add(
-            _artworks[artworkId].encryptedCount,
-            FHE.asEuint32(1)
-        );
+        euint32 newTotal = FHE.add(_artworks[artworkId].encryptedTotalScore, score);
+        euint32 newCount = FHE.add(_artworks[artworkId].encryptedCount, one);
+        
+        // Allow this contract to use the new values
+        FHE.allowThis(newTotal);
+        FHE.allowThis(newCount);
+        
+        // Store the new values
+        _artworks[artworkId].encryptedTotalScore = newTotal;
+        _artworks[artworkId].encryptedCount = newCount;
         _artworks[artworkId].ratingCount++;
-
-        // Grant decryption permissions
-        FHE.allowThis(_artworks[artworkId].encryptedTotalScore);
-        FHE.allow(_artworks[artworkId].encryptedTotalScore, msg.sender);
-        FHE.allowThis(_artworks[artworkId].encryptedCount);
-        FHE.allow(_artworks[artworkId].encryptedCount, msg.sender);
 
         _hasRated[artworkId][msg.sender] = true;
 
         emit RatingSubmitted(artworkId, msg.sender);
+    }
+
+    /// @notice Request decryption permission for an artwork's scores
+    /// @param artworkId The ID of the artwork
+    function requestDecryptionAccess(uint256 artworkId) external {
+        require(_artworks[artworkId].exists, "Artwork does not exist");
+        
+        // Grant decryption permissions to the caller
+        FHE.allow(_artworks[artworkId].encryptedTotalScore, msg.sender);
+        FHE.allow(_artworks[artworkId].encryptedCount, msg.sender);
     }
 
     /// @notice Get artwork metadata

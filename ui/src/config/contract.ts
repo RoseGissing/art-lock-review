@@ -4,7 +4,7 @@
 
 // Contract address from deployments/localhost/ArtworkRating.json
 // Update this after redeploying the contract
-const LOCALHOST_CONTRACT_ADDRESS = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
+const LOCALHOST_CONTRACT_ADDRESS = "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9";
 
 export function getContractAddress(chainId?: number): string | undefined {
   // For localhost (chainId 31337), always use the default deployed address

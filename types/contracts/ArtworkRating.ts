@@ -33,6 +33,7 @@ export interface ArtworkRatingInterface extends Interface {
       | "getEncryptedTotalScore"
       | "hasRated"
       | "protocolId"
+      | "requestDecryptionAccess"
       | "submitRating"
   ): FunctionFragment;
 
@@ -72,6 +73,10 @@ export interface ArtworkRatingInterface extends Interface {
     values?: undefined
   ): string;
   encodeFunctionData(
+    functionFragment: "requestDecryptionAccess",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
     functionFragment: "submitRating",
     values: [BigNumberish, BytesLike, BytesLike]
   ): string;
@@ -98,6 +103,10 @@ export interface ArtworkRatingInterface extends Interface {
   ): Result;
   decodeFunctionResult(functionFragment: "hasRated", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "protocolId", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "requestDecryptionAccess",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(
     functionFragment: "submitRating",
     data: BytesLike
@@ -230,6 +239,12 @@ export interface ArtworkRating extends BaseContract {
 
   protocolId: TypedContractMethod<[], [bigint], "view">;
 
+  requestDecryptionAccess: TypedContractMethod<
+    [artworkId: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+
   submitRating: TypedContractMethod<
     [artworkId: BigNumberish, encryptedScore: BytesLike, inputProof: BytesLike],
     [void],
@@ -275,6 +290,9 @@ export interface ArtworkRating extends BaseContract {
   getFunction(
     nameOrSignature: "protocolId"
   ): TypedContractMethod<[], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "requestDecryptionAccess"
+  ): TypedContractMethod<[artworkId: BigNumberish], [void], "nonpayable">;
   getFunction(
     nameOrSignature: "submitRating"
   ): TypedContractMethod<
